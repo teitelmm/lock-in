@@ -15,6 +15,13 @@ Lock In helps you study faster:
 
 Built with Next.js 15, Tailwind CSS, Supabase (sign-in, database, file storage), and the Claude API.
 
+## Use it inside Claude (no setup)
+
+`artifact/lock-in.html` is a single-page version of Lock In published as a Claude Artifact:
+https://claude.ai/artifact/3ChkGLRPfxmizycsqMtJww
+
+It has the same study sets, games and homework helper. Instead of an API key and Supabase, it asks Claude through your own claude.ai account, and saves your sets and homework in the page's private storage. To change it, edit that file and republish it to the same artifact.
+
 ## Setup
 
 You need Node.js 20+ and two free accounts:

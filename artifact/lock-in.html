@@ -1,0 +1,1033 @@
+<title>Lock In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one centered study column (max 760px) under a sticky top bar; games take the full column. */
+:root {
+  --bg: #f6f5ff;
+  --surface: #ffffff;
+  --surface-2: #eeecfb;
+  --text: #1b1733;
+  --muted: #625d7d;
+  --border: #dedbf1;
+  --accent: #6d4aff;
+  --accent-hover: #5a37ec;
+  --accent-soft: #ebe5ff;
+  --on-accent: #ffffff;
+  --good: #11875d;
+  --good-soft: #dcf5ea;
+  --bad: #c9314b;
+  --bad-soft: #fde4e8;
+  --warn: #9a5a00;
+  --warn-soft: #fff1d6;
+  --shadow: 0 1px 2px rgba(27, 23, 51, .06), 0 4px 16px rgba(27, 23, 51, .05);
+  --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0d1a; --surface: #1a1729; --surface-2: #242038; --text: #efedfa; --muted: #a39fbd;
+    --border: #312c4a; --accent: #8f73ff; --accent-hover: #a58fff; --accent-soft: #2a2350; --on-accent: #ffffff;
+    --good: #3dd598; --good-soft: #143a2c; --bad: #ff6b81; --bad-soft: #43202a; --warn: #ffb547; --warn-soft: #3a2a10;
+    --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f0d1a; --surface: #1a1729; --surface-2: #242038; --text: #efedfa; --muted: #a39fbd;
+  --border: #312c4a; --accent: #8f73ff; --accent-hover: #a58fff; --accent-soft: #2a2350; --on-accent: #ffffff;
+  --good: #3dd598; --good-soft: #143a2c; --bad: #ff6b81; --bad-soft: #43202a; --warn: #ffb547; --warn-soft: #3a2a10;
+  --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+button, input, textarea { font: inherit; color: inherit; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -.02em; }
+h2 { font-size: 1.2rem; font-weight: 700; }
+p { margin: 0; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.topbar-inner { max-width: 760px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 4px; }
+.brand { margin-right: auto; font-weight: 800; font-size: 1.2rem; letter-spacing: -.02em; background: none; border: 0; padding: 4px 0; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.brand .lock { width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: .8rem; }
+.brand em { font-style: normal; color: var(--accent); }
+.navbtn { background: none; border: 0; border-radius: 10px; padding: 7px 10px; font-weight: 600; font-size: .9rem; cursor: pointer; color: var(--muted); }
+.navbtn:hover, .navbtn[aria-current="page"] { background: var(--surface-2); color: var(--text); }
+
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 22px; }
+.stack { display: grid; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.grid2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.eyebrow { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+.back { background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; font-size: .9rem; justify-self: start; }
+.back:hover { color: var(--text); }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+.tile { text-align: left; cursor: pointer; display: flex; gap: 14px; align-items: flex-start; transition: border-color .15s, transform .15s; width: 100%; }
+.tile:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.tile:disabled { opacity: .5; cursor: not-allowed; }
+.tile .ico { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 1.35rem; }
+.tile b { display: block; font-size: 1.05rem; }
+.badge { display: inline-block; font-size: .72rem; font-weight: 700; border-radius: 8px; padding: 2px 8px; background: var(--accent-soft); color: var(--accent); }
+.badge.good { background: var(--good-soft); color: var(--good); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); padding: 10px 16px; font-weight: 700; cursor: pointer; transition: background .15s, border-color .15s; }
+.btn:hover:not(:disabled) { background: var(--surface-2); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: transparent; color: var(--on-accent); }
+.btn.primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn.big { padding: 13px 20px; font-size: 1.05rem; }
+.btn.wide { width: 100%; }
+.btn.good { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--border)); }
+.btn.bad { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; }
+.dangerlink { background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; font-size: .9rem; justify-self: start; }
+.dangerlink:hover, .dangerlink.armed { color: var(--bad); }
+
+label.lbl { display: block; font-size: .85rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.input { width: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 10px 14px; outline: none; }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+textarea.input { resize: vertical; min-height: 110px; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat .num { font-size: 1.7rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stats .stat:last-child { grid-column: span 2; } h1 { font-size: 1.55rem; } }
+
+.hero { display: grid; gap: 10px; padding: 8px 0 4px; }
+.hero h1 { font-size: 2.1rem; }
+.hero h1 span { color: var(--accent); }
+
+.drop { display: grid; justify-items: center; gap: 4px; text-align: center; padding: 30px 18px; border: 2px dashed var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; width: 100%; }
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop .big { font-size: 1.1rem; font-weight: 700; }
+.filelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.filelist li { display: flex; gap: 10px; align-items: center; padding: 10px 14px; }
+.filelist .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.x { margin-left: auto; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 1rem; border-radius: 8px; padding: 2px 8px; }
+.x:hover { color: var(--bad); background: var(--surface-2); }
+
+.notice { border-radius: 12px; padding: 12px 14px; }
+.notice.bad { background: var(--bad-soft); color: var(--bad); }
+.notice.warn { background: var(--warn-soft); color: var(--warn); }
+.notice.good { background: var(--good-soft); color: var(--good); }
+
+.spinner { width: 46px; height: 46px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent); animation: spin 1s linear infinite; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.termlist { padding: 0; }
+.termrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; padding: 12px 18px; border-top: 1px solid var(--border); }
+.termrow:first-child { border-top: 0; }
+@media (max-width: 520px) { .termrow { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Games */
+.progress { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; flex: 1; }
+.progress > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .2s; }
+.choices { display: grid; gap: 8px; margin-top: 16px; }
+.choices.two { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.choice { display: flex; gap: 12px; align-items: center; text-align: left; width: 100%; border: 2px solid var(--border); background: var(--surface); border-radius: 12px; padding: 12px 14px; font-weight: 600; cursor: pointer; transition: border-color .12s; }
+.choice:hover:not(:disabled) { border-color: var(--accent); }
+.choice:disabled { cursor: default; }
+.choice .key { width: 28px; height: 28px; flex: none; border-radius: 8px; background: var(--surface-2); display: grid; place-items: center; font-size: .8rem; font-weight: 800; }
+.choice.right { border-color: var(--good); background: var(--good-soft); }
+.choice.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.choice.dim { opacity: .5; }
+.feedback { margin-top: 16px; border-radius: 12px; padding: 14px; }
+.feedback.right { background: var(--good-soft); }
+.feedback.wrong { background: var(--bad-soft); }
+.feedback .head { font-weight: 800; }
+.feedback.right .head { color: var(--good); }
+.feedback.wrong .head { color: var(--bad); }
+.qprompt { font-size: 1.2rem; font-weight: 700; line-height: 1.35; }
+.endscore { font-size: 3rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.center { text-align: center; }
+
+.flip { perspective: 1200px; background: none; border: 0; padding: 0; width: 100%; height: 300px; cursor: pointer; }
+.flip-inner { position: relative; width: 100%; height: 100%; transition: transform .45s; transform-style: preserve-3d; }
+.flip.flipped .flip-inner { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; backface-visibility: hidden; display: grid; place-items: center; padding: 28px; overflow: auto; }
+.face.back { transform: rotateY(180deg); background: var(--accent-soft); border-color: var(--accent); }
+.face .t { font-size: 1.8rem; font-weight: 800; }
+.face .d { font-size: 1.1rem; }
+
+.hud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; text-align: center; }
+.hud .panel { padding: 10px; }
+.hud .v { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.hud .v.accent { color: var(--accent); }
+.hud .v.low { color: var(--bad); }
+
+.sky { position: relative; height: 400px; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--border); background: linear-gradient(var(--accent-soft), var(--surface)); }
+.sky .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: color-mix(in srgb, var(--bad) 45%, transparent); }
+.meteor { position: absolute; top: 8px; width: 56%; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 12px; font-weight: 600; box-shadow: var(--shadow); will-change: transform; }
+.meteor p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.missed { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; background: color-mix(in srgb, var(--bad-soft) 92%, transparent); padding: 20px; }
+.missed .t { font-size: 1.9rem; font-weight: 800; }
+.lives { font-size: 1.15rem; letter-spacing: 2px; }
+.lives .gone { opacity: .25; }
+
+@keyframes shake { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-6px) } 75% { transform: translateX(6px) } }
+.shake { animation: shake .25s ease-in-out 2; }
+@keyframes pop { 50% { transform: scale(1.15) } }
+.pop { animation: pop .25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .shake, .pop, .spinner { animation: none; } .flip-inner { transition: none; } }
+
+/* Homework */
+.modepick { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.modepick .tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.bubble-me { justify-self: end; max-width: 85%; background: var(--accent); color: var(--on-accent); border-radius: 16px 16px 4px 16px; padding: 10px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply { overflow-wrap: anywhere; }
+.reply h1, .reply h2, .reply h3 { font-size: 1.05rem; margin: .8em 0 .35em; }
+.reply p { margin: .5em 0; }
+.reply ol, .reply ul { padding-left: 1.4em; margin: .5em 0; }
+.reply li { margin: .25em 0; }
+.reply code { background: var(--surface-2); border-radius: 6px; padding: .1em .35em; }
+.reply pre { background: var(--surface-2); border-radius: 10px; padding: 10px; overflow-x: auto; }
+.reply > :first-child { margin-top: 0; }
+.reply > :last-child { margin-bottom: 0; }
+.dots { display: inline-flex; gap: 5px; padding: 6px 0; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: bounce 1s infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce { 50% { transform: translateY(-5px); } }
+.composer { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--bg) 94%, transparent); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; display: grid; gap: 8px; backdrop-filter: blur(6px); }
+.composer .row { flex-wrap: nowrap; }
+.composer .row.chips { flex-wrap: wrap; }
+.btn.chip { padding: 6px 12px; font-size: .88rem; }
+.thumb { max-height: 260px; border-radius: 12px; border: 1px solid var(--border); margin-top: 10px; }
+.listbtn { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; cursor: pointer; padding: 12px 16px; }
+.listbtn:hover { border-color: var(--accent); }
+.listbtn .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+
+<header class="topbar">
+  <nav class="topbar-inner" aria-label="Main">
+    <button class="brand" data-go="home"><span class="lock" aria-hidden="true">🔒</span>Lock <em>In</em></button>
+    <button class="navbtn" data-go="new" id="nav-new">+ Study set</button>
+    <button class="navbtn" data-go="hw" id="nav-hw">Homework</button>
+  </nav>
+</header>
+<main id="app" aria-live="polite"></main>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script>
+"use strict";
+const PDF_WORKER_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+const MAX_MATERIAL_CHARS = 50000; // Claude reads at most 64 KiB per call; leave room for instructions.
+
+/* ---------- small helpers ---------- */
+const $app = document.getElementById("app");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const clean = (s) => String(s ?? "").trim().replace(/\s+/g, " ");
+function shuffle(items) { const a = [...items]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function md(text) {
+  try { return DOMPurify.sanitize(marked.parse(text || "")); } catch { return esc(text).replace(/\n/g, "<br>"); }
+}
+
+/* ---------- answer matching (same rules as the web app) ---------- */
+function normalizeAnswer(s) {
+  return String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ").replace(/\b(the|a|an)\b/g, " ").replace(/\s+/g, " ").trim();
+}
+function levenshtein(a, b) {
+  if (a === b) return 0; if (!a.length) return b.length; if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function isCloseEnough(guess, answer) {
+  const g = normalizeAnswer(guess), a = normalizeAnswer(answer);
+  if (!g || !a) return false;
+  if (g === a) return true;
+  if (/^\d+$/.test(a)) return false;
+  const allowed = a.length <= 4 ? 0 : a.length <= 8 ? 1 : 2;
+  return levenshtein(g, a) <= allowed;
+}
+const streakMultiplier = (s) => Math.min(4, 1 + Math.floor(Math.max(0, s - 1) / 3));
+const fallDuration = (n) => Math.max(4, 14 - n * 0.6);
+
+function normalizeStudySet(raw) {
+  const set = raw && typeof raw === "object" ? raw : {};
+  const seen = new Set();
+  const cards = (Array.isArray(set.cards) ? set.cards : [])
+    .map((c) => ({ term: clean(c?.term), definition: clean(c?.definition) }))
+    .filter((c) => { const k = c.term.toLowerCase(); if (!c.term || !c.definition || seen.has(k)) return false; seen.add(k); return true; });
+  const questions = [];
+  for (const q of Array.isArray(set.questions) ? set.questions : []) {
+    const prompt = clean(q?.prompt), explanation = clean(q?.explanation);
+    let answer = clean(q?.answer);
+    if (!prompt || !answer) continue;
+    if (q.type === "short") { questions.push({ type: "short", prompt, choices: [], answer, explanation }); continue; }
+    if (q.type === "true_false") {
+      const a = answer.toLowerCase(); if (a !== "true" && a !== "false") continue;
+      questions.push({ type: "true_false", prompt, choices: ["True", "False"], answer: a === "true" ? "True" : "False", explanation }); continue;
+    }
+    const choices = [...new Set((Array.isArray(q.choices) ? q.choices : []).map(clean).filter(Boolean))];
+    const match = choices.find((c) => c.toLowerCase() === answer.toLowerCase());
+    if (!match || choices.length < 2) continue;
+    questions.push({ type: "mcq", prompt, choices, answer: match, explanation });
+  }
+  return { title: clean(set.title) || "Untitled set", subject: clean(set.subject), cards, questions };
+}
+function buildSpeedPool(cards, questions) {
+  const items = questions.filter((q) => q.type !== "short" && q.choices.includes(q.answer))
+    .map((q) => ({ prompt: q.prompt, choices: q.type === "mcq" ? shuffle(q.choices) : q.choices, answer: q.answer }));
+  if (cards.length >= 4) for (const c of cards) {
+    const others = shuffle(cards.filter((o) => o.term !== c.term)).slice(0, 3).map((o) => o.term);
+    items.push({ prompt: c.definition, choices: shuffle([c.term, ...others]), answer: c.term });
+  }
+  return shuffle(items);
+}
+function dayKey(d) { return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
+function studyStreak(times, now = new Date()) {
+  const days = new Set(times.map((t) => dayKey(new Date(t))));
+  const cur = new Date(now);
+  if (!days.has(dayKey(cur))) cur.setDate(cur.getDate() - 1);
+  let n = 0; while (days.has(dayKey(cur))) { n++; cur.setDate(cur.getDate() - 1); }
+  return n;
+}
+
+/* ---------- storage: your private folder in this page's database, else this browser ---------- */
+const store = {
+  mode: "loading", db: null, base: "", ready: null,
+  async init() {
+    let db = null, user = null;
+    try { if (window.claude?.use) [db, user] = await Promise.all([claude.use("db"), claude.use("user")]); } catch {}
+    const id = user ? await user.id().catch(() => null) : null;
+    if (db && id) { this.db = db; this.base = `data/users/${id}`; this.mode = "db"; }
+    else this.mode = "local";
+  },
+  localKey: (kind) => `lockin:${kind}`,
+  readLocal(kind) { try { return JSON.parse(localStorage.getItem(this.localKey(kind)) || "{}"); } catch { return {}; } },
+  writeLocal(kind, map) { try { localStorage.setItem(this.localKey(kind), JSON.stringify(map)); } catch {} },
+  async list(kind) {
+    await this.ready;
+    if (this.mode === "db") {
+      try {
+        const snap = await this.db.collection(`${this.base}/${kind}`).get();
+        return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      } catch (e) { console.warn("db list failed", e); return []; }
+    }
+    return Object.entries(this.readLocal(kind)).map(([id, v]) => ({ id, ...v }));
+  },
+  async get(kind, id) {
+    await this.ready;
+    if (this.mode === "db") {
+      const s = await this.db.doc(`${this.base}/${kind}/${id}`).get();
+      return s.exists ? { id, ...s.data() } : null;
+    }
+    const v = this.readLocal(kind)[id]; return v ? { id, ...v } : null;
+  },
+  async put(kind, id, value) {
+    await this.ready;
+    const { id: _drop, ...body } = value;
+    if (this.mode === "db") return this.db.doc(`${this.base}/${kind}/${id}`).set(body);
+    const map = this.readLocal(kind); map[id] = body; this.writeLocal(kind, map);
+  },
+  async remove(kind, id) {
+    await this.ready;
+    if (this.mode === "db") return this.db.doc(`${this.base}/${kind}/${id}`).delete();
+    const map = this.readLocal(kind); delete map[id]; this.writeLocal(kind, map);
+  },
+};
+store.ready = store.init();
+
+/* ---------- Claude ---------- */
+let samplePromise = null;
+function getSample() {
+  samplePromise ??= (async () => { try { return window.claude?.use ? await claude.use("sample") : null; } catch { return null; } })();
+  return samplePromise;
+}
+async function imageLimits() {
+  const s = await getSample(); if (!s?.limits) return null;
+  try { return (await s.limits()).images ?? null; } catch { return null; }
+}
+function aiError(e) {
+  switch (e?.code) {
+    case "not_granted": return "Lock In needs your OK to ask Claude. Reload the page and choose Allow when asked.";
+    case "rate_limited": case "queue_overflow": return "Claude is busy with your other requests. Wait a minute, then try again.";
+    case "prompt_too_large": return "That's too much material for one set. Split it into smaller uploads.";
+    case "images_unavailable": case "image_rejected": return "Claude couldn't read that photo here. Type the problem instead, or try a JPEG or PNG.";
+    case "refused": return "Claude couldn't help with that one. Try rewording it.";
+    case "invalid_json": case "empty_completion": return "Claude's answer came back incomplete. Try again.";
+    case "session_expired": return "Your session expired. Reload the page and try again.";
+    case "sampling_disabled": case "capability_disabled": case "capability_removed": case "not_declared":
+      return "Asking Claude isn't available in this view. Open Lock In on claude.ai while signed in.";
+    case "cancelled": return "Stopped.";
+    default: return "Something went wrong reaching Claude. Try again in a moment.";
+  }
+}
+
+const GENERATOR_RULES = `You turn a student's class material (slides, notes, handouts, photos of notes) into a study set they will use to prepare for a test.
+
+Build two things from the material:
+1. Flashcards (15-40, depending on how much material there is). Each card is one key term, person, date, formula, or concept with a short, clear definition. Keep terms short (a few words) because students will type them in a typing game. Cover every major topic, not just the first few slides.
+2. Quiz questions (10-25). Mix the types:
+   - "mcq": about 60%. Exactly 4 choices. Wrong choices are plausible (same topic). The answer is copied exactly from the choices. Vary which position holds the right answer.
+   - "true_false": about 20%. Choices are ["True","False"]. Roughly half are false, written as realistic misconceptions.
+   - "short": about 20%. The answer is one word, name, number, or short phrase that can be checked by typing. Choices is [].
+   Include some questions that ask the student to apply or compare ideas. Every question gets a one- or two-sentence explanation.
+
+Rules:
+- Only use facts in the material. Speaker notes count as material.
+- Write at the level of the material.
+- title: a short name for the set (e.g. "Cell Structure - Ch. 4"). subject: the class subject (e.g. "Biology").
+- If the material is thin, make fewer items rather than repeats.
+
+Reply with ONLY this JSON object, no other text:
+{"title": "...", "subject": "...", "cards": [{"term": "...", "definition": "..."}], "questions": [{"type": "mcq", "prompt": "...", "choices": ["...","...","...","..."], "answer": "...", "explanation": "..."}]}`;
+
+const SOLVE_RULES = `You are a homework helper. The student wants the worked solution, not a lesson.
+Give:
+1. A one-line restatement of what is being asked (if a photo is attached, transcribe the problem here).
+2. Numbered steps that show the work. Keep each step short and show the key calculation or reasoning. Use plain text math (x^2, sqrt(3), 3/4); no LaTeX.
+3. A final line: "**Final answer:** ..." (with units if any).
+If there are several problems, solve each under its own heading. If part of the problem or photo is unreadable, say what you can't read and solve what you can. Double-check arithmetic. If the student asks a follow-up, answer it directly.`;
+
+const TUTOR_RULES = `You are a patient, upbeat tutor helping a student work through their homework themselves, so they can do the next one without help.
+- In your first reply: if a photo is attached, begin with "**Problem:**" and transcribe it. Then briefly name what kind of problem it is and ask the student what they think the first step is. Do not solve it.
+- Give one step or hint at a time, then stop and let the student try. Keep each message to a few sentences.
+- When the student answers, say clearly whether it's right. If wrong, point to where it went wrong and give a smaller hint, not the fix.
+- If they are stuck twice on the same step, show that one step with reasoning, then hand the next step back.
+- When they reach the answer, confirm it and summarize the method in one sentence.
+- If the student asks for the answer or the full solution, give the full worked solution ending with "**Final answer:** ...".
+- Plain text math (x^2, sqrt(3), 3/4); no LaTeX. Several problems: one at a time.`;
+
+/* ---------- reading files in the browser ---------- */
+class ReadError extends Error {}
+const extOf = (name) => (name.toLowerCase().split(".").pop() || "");
+const IMAGE_EXT = ["jpg", "jpeg", "png", "webp", "gif"];
+
+function decodeXml(s) {
+  return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d))).replace(/&amp;/g, "&");
+}
+function drawingParagraphs(xml) {
+  const out = [];
+  for (const p of xml.match(/<a:p[\s>][\s\S]*?<\/a:p>/g) || []) {
+    const text = [...p.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)].map((m) => decodeXml(m[1])).join("").trim();
+    if (text) out.push(text);
+  }
+  return out;
+}
+async function readPptx(file) {
+  let zip;
+  try { zip = await JSZip.loadAsync(await file.arrayBuffer()); } catch { throw new ReadError(`${file.name} couldn't be opened. Try re-saving it as .pptx or PDF.`); }
+  const num = (p) => Number(p.match(/(\d+)\.xml$/)?.[1] || 0);
+  const slides = Object.keys(zip.files).filter((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p)).sort((a, b) => num(a) - num(b));
+  const sections = [];
+  for (const [i, path] of slides.entries()) {
+    const text = drawingParagraphs(await zip.file(path).async("string"));
+    let notes = [];
+    const rels = zip.file(path.replace("slides/", "slides/_rels/") + ".rels");
+    const target = rels && (await rels.async("string")).match(/Target="\.\.\/notesSlides\/([^"]+)"/)?.[1];
+    const nf = target && zip.file(`ppt/notesSlides/${target}`);
+    if (nf) notes = drawingParagraphs(await nf.async("string")).filter((t) => !/^\d+$/.test(t));
+    if (!text.length && !notes.length) continue;
+    let s = `## Slide ${i + 1}\n${text.join("\n")}`;
+    if (notes.length) s += `\nSpeaker notes: ${notes.join(" ")}`;
+    sections.push(s);
+  }
+  return sections.join("\n\n");
+}
+let pdfWorkerLoad = null;
+async function readPdf(file) {
+  if (!window.pdfjsLib) throw new ReadError("The PDF reader didn't load. Check your connection and reload.");
+  // The page can't start workers from the CDN, so load pdf.js's worker code on the page itself;
+  // pdf.js then runs it in the main thread.
+  pdfWorkerLoad ??= new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = PDF_WORKER_URL; s.onload = resolve; s.onerror = () => { pdfWorkerLoad = null; reject(); };
+    document.head.appendChild(s);
+  });
+  try { await pdfWorkerLoad; } catch { throw new ReadError("The PDF reader didn't load. Check your connection and try again."); }
+  let pdf;
+  try { pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise; }
+  catch { throw new ReadError(`${file.name} couldn't be opened as a PDF.`); }
+  const pages = [];
+  for (let n = 1; n <= Math.min(pdf.numPages, 300); n++) {
+    const content = await (await pdf.getPage(n)).getTextContent();
+    const text = content.items.map((it) => (it.str || "") + (it.hasEOL ? "\n" : " ")).join("").replace(/[ \t]+/g, " ").trim();
+    if (text) pages.push(`## Page ${n}\n${text}`);
+  }
+  return pages.join("\n\n");
+}
+async function readDocx(file) {
+  try { return (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value.trim(); }
+  catch { throw new ReadError(`${file.name} couldn't be opened. Try re-saving it as .docx or PDF.`); }
+}
+/** Returns {text} for documents or {image} for photos. */
+async function readFile(file) {
+  const ext = extOf(file.name);
+  if (IMAGE_EXT.includes(ext) || file.type.startsWith("image/")) return { image: file };
+  let text;
+  if (ext === "pptx") text = await readPptx(file);
+  else if (ext === "pdf") text = await readPdf(file);
+  else if (ext === "docx") text = await readDocx(file);
+  else if (["txt", "md", "markdown", "csv"].includes(ext)) text = await file.text();
+  else if (ext === "ppt" || ext === "doc") throw new ReadError(`Old .${ext} files aren't supported. Save ${file.name} as .${ext}x or PDF, then upload it again.`);
+  else throw new ReadError(`${file.name}: unsupported file type. Use PowerPoint (.pptx), PDF, Word (.docx), text, or a photo.`);
+  if (!text.trim()) {
+    throw new ReadError(ext === "pdf"
+      ? `${file.name} has no selectable text (it's probably scanned). Upload photos of the pages instead.`
+      : `No text found in ${file.name}. If the slides are mostly pictures, export them as PDF or photos.`);
+  }
+  return { text: `<material filename="${file.name}">\n${text}\n</material>` };
+}
+
+/* ---------- router ---------- */
+let cleanup = null;
+const state = { view: "home", params: {} };
+function go(view, params = {}) {
+  cleanup?.(); cleanup = null;
+  state.view = view; state.params = params;
+  document.querySelectorAll(".navbtn").forEach((b) => b.removeAttribute("aria-current"));
+  if (view === "new") document.getElementById("nav-new").setAttribute("aria-current", "page");
+  if (view === "hw" || view === "hwSession") document.getElementById("nav-hw").setAttribute("aria-current", "page");
+  window.scrollTo(0, 0);
+  const fn = VIEWS[view] || VIEWS.home;
+  fn(params);
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-go]");
+  if (t) { e.preventDefault(); go(t.dataset.go, t.dataset.id ? { id: t.dataset.id } : {}); }
+});
+
+/* ---------- views ---------- */
+const VIEWS = {};
+
+VIEWS.home = async () => {
+  $app.innerHTML = `
+    <section class="hero">
+      <h1>Study less time. <span>Remember more.</span></h1>
+      <p class="muted">Upload your notes or slides to get flashcards, a quiz and games. Stuck on homework? Get a tutor or the full steps.</p>
+    </section>
+    <section class="stats" id="stats">
+      <div class="panel stat"><div class="num">–</div><div class="muted small">Day streak</div></div>
+      <div class="panel stat"><div class="num">–</div><div class="muted small">Sessions this week</div></div>
+      <div class="panel stat"><div class="num">–</div><div class="muted small">Study sets</div></div>
+    </section>
+    <section class="grid2">
+      <button class="panel tile" data-go="new"><span class="ico" aria-hidden="true">📤</span><span><b>New study set</b><span class="muted small">Upload slides or notes, get a quiz</span></span></button>
+      <button class="panel tile" data-go="hw"><span class="ico" aria-hidden="true">🧑‍🏫</span><span><b>Homework helper</b><span class="muted small">Tutor mode or steps + answer</span></span></button>
+    </section>
+    <section class="stack"><h2>Your study sets</h2><div id="sets" class="grid2"><p class="muted">Loading your study sets…</p></div></section>
+    <section class="stack" id="hwsec" hidden><h2>Recent homework</h2><div id="hwlist" class="stack" style="gap:8px"></div></section>
+    <p class="muted small" id="where"></p>`;
+  const [sets, attempts, hw] = await Promise.all([store.list("sets"), store.list("attempts"), store.list("homework")]);
+  if (state.view !== "home") return;
+  sets.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const times = attempts.map((a) => a.at);
+  const week = attempts.filter((a) => a.at > Date.now() - 7 * 864e5).length;
+  document.getElementById("stats").innerHTML = `
+    <div class="panel stat"><div class="num">${studyStreak(times)} 🔥</div><div class="muted small">Day streak</div></div>
+    <div class="panel stat"><div class="num">${week}</div><div class="muted small">Sessions this week</div></div>
+    <div class="panel stat"><div class="num">${sets.length}</div><div class="muted small">Study sets</div></div>`;
+  document.getElementById("sets").innerHTML = sets.length
+    ? sets.map((s) => `<button class="panel tile" data-go="set" data-id="${esc(s.id)}" style="display:block">
+        <div class="eyebrow">${esc(s.subject || "Study set")}</div>
+        <b style="margin-top:4px">${esc(s.title)}</b>
+        <div class="muted small" style="margin-top:6px">${(s.cards || []).length} cards · ${(s.questions || []).length} questions</div></button>`).join("")
+    : `<div class="panel stack" style="grid-column:1/-1"><p><b>No study sets yet.</b></p><p class="muted">Upload a slide deck, PDF or your notes and Lock In turns them into flashcards, a quiz and games.</p><button class="btn primary" data-go="new" style="justify-self:start">Make your first study set</button></div>`;
+  hw.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  if (hw.length) {
+    document.getElementById("hwsec").hidden = false;
+    document.getElementById("hwlist").innerHTML = hw.slice(0, 5).map((h) => `
+      <button class="panel listbtn" data-go="hwSession" data-id="${esc(h.id)}"><span class="badge">${h.mode === "tutor" ? "Tutor" : "Solve"}</span><span class="txt">${esc(h.title || h.problem || "Photo problem")}</span></button>`).join("");
+  }
+  document.getElementById("where").textContent = store.mode === "db"
+    ? "Your sets and homework are saved to your Claude account, private to you."
+    : "Your sets and homework are saved in this browser only.";
+};
+
+VIEWS.new = async () => {
+  let files = [];
+  const lim = await imageLimits();
+  $app.innerHTML = `
+    <div class="stack"><h1>New study set</h1><p class="muted">Upload what your teacher gave you. You'll get flashcards, a quiz and games.</p></div>
+    <button class="drop" id="drop" type="button"><span style="font-size:2rem" aria-hidden="true">📤</span><span class="big">Drop files here or tap to choose</span>
+      <span class="muted small">PowerPoint (.pptx), PDF, Word (.docx), or text${lim ? ", plus photos of your notes" : ""}</span></button>
+    <input type="file" id="picker" multiple hidden accept=".pptx,.pdf,.docx,.txt,.md${lim ? ",image/*" : ""}">
+    <ul class="filelist" id="files"></ul>
+    <div><label class="lbl" for="notes">Or paste notes</label><textarea class="input" id="notes" rows="6" placeholder="Paste class notes, a study guide or a vocab list…"></textarea></div>
+    <div id="err"></div>
+    <button class="btn primary big wide" id="make" disabled>Make my study set ✨</button>`;
+  const drop = document.getElementById("drop"), picker = document.getElementById("picker"), notes = document.getElementById("notes"), make = document.getElementById("make");
+  const refresh = () => {
+    document.getElementById("files").innerHTML = files.map((f, i) => `<li class="panel"><span class="name">${esc(f.name)}</span><span class="muted small">${(f.size / 1048576).toFixed(1)} MB</span><button class="x" data-rm="${i}" aria-label="Remove ${esc(f.name)}">✕</button></li>`).join("");
+    make.disabled = !files.length && !notes.value.trim();
+  };
+  const add = (list) => { files = [...files, ...Array.from(list || [])].slice(0, 10); refresh(); };
+  drop.onclick = () => picker.click();
+  picker.onchange = () => { add(picker.files); picker.value = ""; };
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); add(e.dataTransfer.files); };
+  notes.oninput = refresh;
+  document.getElementById("files").onclick = (e) => { const b = e.target.closest("[data-rm]"); if (b) { files.splice(Number(b.dataset.rm), 1); refresh(); } };
+  make.onclick = () => generateSet(files, notes.value, lim);
+};
+
+async function generateSet(files, pasted, lim) {
+  const showErr = (msg) => { go("new"); setTimeout(() => { const el = document.getElementById("err"); if (el) el.innerHTML = `<p class="notice bad">${esc(msg)}</p>`; }, 0); };
+  const lines = ["Reading your material…", "Asking Claude to pick out the key terms…", "Writing flashcards…", "Making tricky wrong answers…", "Checking the quiz…", "Almost ready…"];
+  $app.innerHTML = `<div class="panel stack center" style="padding:44px 20px"><div class="spinner"></div><p style="font-weight:700;font-size:1.1rem" id="line">${lines[0]}</p>
+    <p class="muted small">Big decks can take a minute or two. Keep this page open.</p><button class="btn" id="stop" style="justify-self:center">Stop</button></div>`;
+  let i = 0; const timer = setInterval(() => { i = Math.min(i + 1, lines.length - 1); const el = document.getElementById("line"); if (el) el.textContent = lines[i]; }, 7000);
+  const ctl = new AbortController();
+  document.getElementById("stop").onclick = () => ctl.abort();
+  cleanup = () => { clearInterval(timer); ctl.abort(); };
+  try {
+    const parts = [], images = [];
+    for (const f of files) { const r = await readFile(f); r.text ? parts.push(r.text) : images.push(r.image); }
+    if (pasted.trim()) parts.push(`<material filename="pasted notes">\n${pasted.trim()}\n</material>`);
+    if (images.length && !lim) throw new ReadError("Photos can't be read in this view. Upload a PDF or paste the text instead.");
+    if (lim && images.length > lim.maxCount) throw new ReadError(`Claude can read up to ${lim.maxCount} photos at once. Remove some and try again.`);
+    let material = parts.join("\n\n"), cut = false;
+    if (material.length > MAX_MATERIAL_CHARS) { material = material.slice(0, MAX_MATERIAL_CHARS); cut = true; }
+    const sample = await getSample();
+    if (!sample) throw new ReadError("Asking Claude isn't available in this view. Open Lock In on claude.ai while signed in.");
+    const prompt = `${GENERATOR_RULES}\n\n${images.length ? `The student also attached ${images.length} photo(s) of their notes; treat them as material.\n\n` : ""}Material:\n${material || "(see the attached photos)"}`;
+    const raw = await sample.json(prompt, { signal: ctl.signal, ...(images.length ? { images } : {}) });
+    const set = normalizeStudySet(raw);
+    if (!set.cards.length && !set.questions.length) throw new ReadError("Couldn't find enough to study in that material.");
+    const id = uid();
+    await store.put("sets", id, { ...set, createdAt: Date.now(), sources: files.map((f) => f.name), truncated: cut });
+    cleanup?.(); cleanup = null;
+    go("set", { id, fresh: cut ? "cut" : "yes" });
+  } catch (e) {
+    cleanup?.(); cleanup = null;
+    if (e?.code === "cancelled") return go("new");
+    showErr(e instanceof ReadError ? e.message : e?.code ? aiError(e) : "Couldn't save the study set. Try again.");
+  }
+}
+
+async function loadSet(id) {
+  const set = await store.get("sets", id).catch(() => null);
+  if (!set) { $app.innerHTML = `<div class="panel stack"><p><b>That study set wasn't found.</b></p><button class="btn" data-go="home" style="justify-self:start">Back to your sets</button></div>`; return null; }
+  set.cards ||= []; set.questions ||= [];
+  return set;
+}
+async function bestScores(setId) {
+  const best = {};
+  for (const a of await store.list("attempts")) if (a.setId === setId && (!best[a.mode] || a.score > best[a.mode].score)) best[a.mode] = a;
+  return best;
+}
+function saveAttempt(setId, mode, score, total) {
+  store.put("attempts", uid(), { setId, mode, score, total, at: Date.now() }).catch((e) => console.warn("attempt not saved", e));
+}
+
+VIEWS.set = async ({ id, fresh }) => {
+  $app.innerHTML = `<p class="muted">Loading…</p>`;
+  const set = await loadSet(id); if (!set) return;
+  const best = await bestScores(id);
+  const modes = [
+    ["quiz", "📝", "Quiz", "Answer every question with instant feedback.", set.questions.length > 0],
+    ["flashcards", "🃏", "Flashcards", "Flip, then sort: know it or still learning.", set.cards.length > 0],
+    ["speed", "⚡", "Speed Round", "60 seconds. Streaks multiply your points.", buildSpeedPool(set.cards, set.questions).length > 0],
+    ["falling", "☄️", "Falling Words", "Type the term before the definition lands.", set.cards.length > 0],
+  ];
+  const bestLabel = (m) => { const b = best[m]; if (!b) return ""; return `<span class="badge good" style="margin-top:6px">Best: ${b.score}${m === "speed" ? " pts" : m === "falling" ? " caught" : "/" + b.total}</span>`; };
+  $app.innerHTML = `
+    <button class="back" data-go="home">← Your sets</button>
+    ${fresh ? `<p class="notice good">Your study set is ready. Pick a way to study.</p>` : ""}
+    ${fresh === "cut" || set.truncated ? `<p class="notice warn">That material was very long, so only the first part was used. Upload the rest as a second set.</p>` : ""}
+    <div class="stack" style="gap:4px"><div class="eyebrow">${esc(set.subject || "Study set")}</div><h1>${esc(set.title)}</h1>
+      <p class="muted">${set.cards.length} flashcards · ${set.questions.length} quiz questions</p></div>
+    <section class="grid2">${modes.map(([m, ico, name, body, ok]) => `
+      <button class="panel tile" data-mode="${m}" ${ok ? "" : "disabled"}><span class="ico" aria-hidden="true">${ico}</span>
+        <span><b>${name}</b><span class="muted small">${ok ? body : "Not enough material in this set for this mode."}</span>${bestLabel(m)}</span></button>`).join("")}</section>
+    ${set.cards.length ? `<section class="stack"><h2>Terms in this set</h2><div class="panel termlist">${set.cards.map((c) => `<div class="termrow"><b>${esc(c.term)}</b><span class="muted">${esc(c.definition)}</span></div>`).join("")}</div></section>` : ""}
+    <button class="dangerlink" id="del">Delete this set</button>`;
+  $app.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => go(b.dataset.mode, { id })));
+  const del = document.getElementById("del");
+  del.onclick = async () => {
+    if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Tap again to delete for good"; return; }
+    del.disabled = true; del.textContent = "Deleting…";
+    try { await store.remove("sets", id); go("home"); } catch { del.textContent = "Couldn't delete. Try again."; del.disabled = false; }
+  };
+};
+
+function gameHeader(set, title) {
+  return `<button class="back" data-go="set" data-id="${esc(set.id)}">← ${esc(set.title)}</button><h1>${title}</h1><div id="game" class="stack"></div>`;
+}
+function endScreen(el, { headline, score, detail = "", replay = "Play again", extra = "", after = "" }, setId, onReplay, onExtra) {
+  el.innerHTML = `<div class="panel stack center" style="padding:34px 18px">
+    <div class="muted" style="font-weight:700;font-size:1.05rem">${esc(headline)}</div>
+    <div class="endscore pop">${esc(score)}</div>${detail ? `<div class="muted">${esc(detail)}</div>` : ""}
+    <div class="row" style="justify-content:center;margin-top:8px">${extra ? `<button class="btn" id="extra">${esc(extra)}</button>` : ""}
+      <button class="btn primary" id="replay">${esc(replay)}</button><button class="btn" data-go="set" data-id="${esc(setId)}">Back to set</button></div></div>${after}`;
+  document.getElementById("replay").onclick = onReplay;
+  document.getElementById("replay").focus();
+  if (extra) document.getElementById("extra").onclick = onExtra;
+}
+const cheer = (p) => p >= 0.9 ? "You're locked in 🔒" : p >= 0.7 ? "Nice work 💪" : p >= 0.5 ? "Getting there 📈" : "Keep practicing, you've got this 🌱";
+
+/* Quiz */
+VIEWS.quiz = async ({ id }) => {
+  const set = await loadSet(id); if (!set) return;
+  $app.innerHTML = gameHeader(set, "Quiz");
+  const el = document.getElementById("game");
+  const prep = (qs) => shuffle(qs).map((q) => (q.type === "mcq" ? { ...q, choices: shuffle(q.choices) } : q));
+  let deck, idx, results, retry;
+  const start = (qs, isRetry) => { deck = prep(qs); idx = 0; results = []; retry = isRetry; show(); };
+  function show() {
+    if (idx >= deck.length) return finish();
+    const q = deck[idx];
+    el.innerHTML = `<div class="row small muted"><span>Question ${idx + 1} of ${deck.length}</span><div class="progress"><i style="width:${(idx / deck.length) * 100}%"></i></div></div>
+      <div class="panel"><p class="qprompt">${esc(q.prompt)}</p>
+      ${q.type === "short"
+        ? `<form class="row" id="sf" style="margin-top:16px;flex-wrap:nowrap"><input class="input" id="sa" autocomplete="off" placeholder="Type your answer"><button class="btn primary">Check</button></form>`
+        : `<div class="choices">${q.choices.map((c, i) => `<button class="choice" data-c="${i}"><span class="key">${q.type === "true_false" ? c[0] : "ABCD"[i] || i + 1}</span><span>${esc(c)}</span></button>`).join("")}</div>`}
+      <div id="fb"></div></div><div id="next"></div>`;
+    if (q.type === "short") {
+      const input = document.getElementById("sa"); input.focus();
+      document.getElementById("sf").onsubmit = (e) => { e.preventDefault(); if (input.value.trim()) answer(input.value); };
+    } else el.querySelectorAll(".choice").forEach((b) => (b.onclick = () => answer(q.choices[Number(b.dataset.c)])));
+  }
+  function answer(value) {
+    const q = deck[idx];
+    const ok = q.type === "short" ? isCloseEnough(value, q.answer) : value === q.answer;
+    results.push({ q, given: value, ok });
+    el.querySelectorAll(".choice").forEach((b) => {
+      const c = q.choices[Number(b.dataset.c)]; b.disabled = true;
+      b.classList.add(c === q.answer ? "right" : c === value ? "wrong" : "dim");
+    });
+    const form = document.getElementById("sf");
+    if (form) { form.querySelector("input").disabled = true; form.querySelector("button").hidden = true; }
+    const fb = document.getElementById("fb");
+    fb.innerHTML = `<div class="feedback ${ok ? "right" : "wrong"}"><div class="head">${ok ? "Correct! 🎉" : "Not quite. Answer: " + esc(q.answer)}</div>
+      ${q.explanation ? `<p class="small" style="margin-top:4px">${esc(q.explanation)}</p>` : ""}
+      ${!ok && q.type === "short" ? `<button class="linkbtn small" id="override" style="margin-top:6px">I was right (count it)</button>` : ""}</div>`;
+    document.getElementById("override")?.addEventListener("click", (e) => { results[results.length - 1].ok = true; e.target.replaceWith(Object.assign(document.createElement("span"), { className: "small", textContent: "Counted as correct." })); });
+    document.getElementById("next").innerHTML = `<button class="btn primary big wide" id="nx">${idx + 1 < deck.length ? "Next question →" : "See my score"}</button>`;
+    const nx = document.getElementById("nx"); nx.focus(); nx.onclick = () => { idx++; show(); };
+  }
+  function finish() {
+    const right = results.filter((r) => r.ok).length, missed = results.filter((r) => !r.ok);
+    if (!retry) saveAttempt(id, "quiz", right, deck.length);
+    endScreen(el, {
+      headline: cheer(right / deck.length), score: `${right}/${deck.length}`,
+      detail: retry ? "Retry round (not counted toward your best)" : `${Math.round((right / deck.length) * 100)}% correct`,
+      replay: "Take it again", extra: missed.length ? `Retry the ${missed.length} I missed` : "",
+      after: missed.length ? `<div class="panel stack"><h2>Review what you missed</h2>${missed.map((m) => `<div class="stack" style="gap:2px;border-top:1px solid var(--border);padding-top:10px">
+        <b>${esc(m.q.prompt)}</b><span class="small" style="color:var(--bad)">You said: ${esc(m.given || "(blank)")}</span>
+        <span class="small" style="color:var(--good)">Answer: ${esc(m.q.answer)}</span>${m.q.explanation ? `<span class="small muted">${esc(m.q.explanation)}</span>` : ""}</div>`).join("")}</div>` : "",
+    }, id, () => start(set.questions, false), () => start(missed.map((m) => m.q), true));
+  }
+  start(set.questions, false);
+};
+
+/* Flashcards */
+VIEWS.flashcards = async ({ id }) => {
+  const set = await loadSet(id); if (!set) return;
+  $app.innerHTML = gameHeader(set, "Flashcards");
+  const el = document.getElementById("game");
+  let deck, idx, known, learning, round, flipped, termFirst = true;
+  const start = (cards, r) => { deck = shuffle(cards); idx = 0; known = []; learning = []; round = r; flipped = false; show(); };
+  function show() {
+    if (idx >= deck.length) return finish();
+    const c = deck[idx], front = termFirst ? c.term : c.definition, back = termFirst ? c.definition : c.term;
+    el.innerHTML = `<div class="row small muted" style="justify-content:space-between"><span>${round > 1 ? `Round ${round} · ` : ""}Card ${idx + 1} of ${deck.length}</span>
+        <button class="navbtn" id="swap">Show ${termFirst ? "definition" : "term"} first ⇄</button></div>
+      <button class="flip ${flipped ? "flipped" : ""}" id="card" aria-label="Flip card"><div class="flip-inner">
+        <div class="face panel"><p class="${termFirst ? "t" : "d"}">${esc(front)}</p></div>
+        <div class="face back panel"><p class="${termFirst ? "d" : "t"}">${esc(back)}</p></div></div></button>
+      <p class="muted small center">Tap the card to flip · keyboard: space flips, ← still learning, → know it</p>
+      <div class="grid2" style="grid-template-columns:1fr 1fr"><button class="btn bad big" id="no">✗ Still learning</button><button class="btn good big" id="yes">✓ Know it</button></div>
+      <div class="row small" style="justify-content:center;gap:22px"><span style="color:var(--bad)">Still learning: ${learning.length}</span><span style="color:var(--good)">Know it: ${known.length}</span></div>`;
+    document.getElementById("card").onclick = () => { flipped = !flipped; document.getElementById("card").classList.toggle("flipped", flipped); };
+    document.getElementById("swap").onclick = () => { termFirst = !termFirst; flipped = false; show(); };
+    document.getElementById("yes").onclick = () => mark(true);
+    document.getElementById("no").onclick = () => mark(false);
+  }
+  function mark(ok) {
+    if (idx >= deck.length) return;
+    (ok ? known : learning).push(deck[idx]); idx++; flipped = false;
+    if (idx >= deck.length && round === 1) saveAttempt(id, "flashcards", known.length, deck.length);
+    show();
+  }
+  function finish() {
+    endScreen(el, {
+      headline: learning.length ? cheer(known.length / deck.length) : "You know every card 🔒", score: `${known.length}/${deck.length}`,
+      detail: learning.length ? `${learning.length} still learning` : "Nothing left to review", replay: "Start over",
+      extra: learning.length ? `Study the ${learning.length} I'm still learning` : "",
+    }, id, () => start(set.cards, 1), () => start(learning, round + 1));
+  }
+  const onKey = (e) => {
+    if (idx >= deck.length || e.target.tagName === "INPUT") return;
+    if (e.key === " ") { e.preventDefault(); document.getElementById("card")?.click(); }
+    else if (e.key === "ArrowRight") mark(true);
+    else if (e.key === "ArrowLeft") mark(false);
+  };
+  window.addEventListener("keydown", onKey);
+  cleanup = () => window.removeEventListener("keydown", onKey);
+  start(set.cards, 1);
+};
+
+/* Speed Round */
+VIEWS.speed = async ({ id }) => {
+  const set = await loadSet(id); if (!set) return;
+  let best = (await bestScores(id)).speed?.score || 0;
+  $app.innerHTML = gameHeader(set, "Speed Round");
+  const el = document.getElementById("game");
+  const ROUND = 60;
+  let pool, idx, points, streak, bestStreak, answered, correct, endsAt, locked, tick;
+  function ready() {
+    el.innerHTML = `<div class="panel stack center" style="padding:36px 18px"><div style="font-size:2.6rem">⚡</div><h2 style="font-size:1.5rem">60 seconds. Go fast.</h2>
+      <p class="muted" style="max-width:380px;margin:0 auto">Answer as many as you can. Every 3 in a row raises your multiplier (up to ×4). A wrong answer resets it. Keys 1–4 work too.</p>
+      ${best ? `<p style="color:var(--good);font-weight:700">Your best: ${best} pts</p>` : ""}<button class="btn primary big" id="go" style="justify-self:center">Start</button></div>`;
+    document.getElementById("go").onclick = startRound; document.getElementById("go").focus();
+  }
+  function startRound() {
+    pool = buildSpeedPool(set.cards, set.questions); idx = 0; points = 0; streak = 0; bestStreak = 0; answered = 0; correct = 0; locked = false;
+    endsAt = Date.now() + ROUND * 1000;
+    el.innerHTML = `<div class="hud"><div class="panel"><div class="v" id="time">60s</div><div class="muted small">left</div></div>
+      <div class="panel"><div class="v accent" id="pts">0</div><div class="muted small">points</div></div>
+      <div class="panel"><div class="v" id="stk">–</div><div class="muted small" id="mult">next ×1</div></div></div>
+      <div class="progress" style="flex:none"><i id="bar" style="width:100%;transition:none"></i></div><div class="panel" id="q"></div>`;
+    tick = setInterval(() => {
+      const left = Math.max(0, (endsAt - Date.now()) / 1000);
+      const t = document.getElementById("time"); if (!t) return;
+      t.textContent = Math.ceil(left) + "s"; t.classList.toggle("low", left < 10);
+      document.getElementById("bar").style.width = (left / ROUND) * 100 + "%";
+      if (left <= 0) finish();
+    }, 100);
+    showQ();
+  }
+  function showQ() {
+    const it = pool[idx % pool.length];
+    document.getElementById("q").innerHTML = `<p class="qprompt" style="font-size:1.08rem">${esc(it.prompt)}</p><div class="choices two">${it.choices.map((c, i) => `<button class="choice" data-c="${i}"><span class="key">${i + 1}</span><span>${esc(c)}</span></button>`).join("")}</div>`;
+    document.querySelectorAll("#q .choice").forEach((b) => (b.onclick = () => choose(Number(b.dataset.c))));
+  }
+  function choose(i) {
+    if (locked || !document.getElementById("q")) return;
+    const it = pool[idx % pool.length]; if (i >= it.choices.length) return;
+    locked = true; answered++;
+    const ok = it.choices[i] === it.answer;
+    document.querySelectorAll("#q .choice").forEach((b, j) => b.classList.add(it.choices[j] === it.answer ? "right" : j === i ? "wrong" : "dim"));
+    if (ok) { streak++; bestStreak = Math.max(bestStreak, streak); correct++; points += 100 * streakMultiplier(streak); }
+    else { streak = 0; document.getElementById("q").classList.add("shake"); }
+    const p = document.getElementById("pts"); p.textContent = points; p.classList.remove("pop"); void p.offsetWidth; p.classList.add("pop");
+    document.getElementById("stk").textContent = streak ? "🔥" + streak : "–";
+    document.getElementById("mult").textContent = "next ×" + streakMultiplier(streak + 1);
+    setTimeout(() => {
+      if (!document.getElementById("q")) return;
+      document.getElementById("q").classList.remove("shake");
+      idx++; if (idx % pool.length === 0) pool = buildSpeedPool(set.cards, set.questions);
+      locked = false; showQ();
+    }, ok ? 250 : 900);
+  }
+  function finish() {
+    clearInterval(tick); tick = null;
+    saveAttempt(id, "speed", points, answered);
+    const record = points > best && points > 0; const prev = best; best = Math.max(best, points);
+    endScreen(el, { headline: record ? "New high score! 🏆" : "Time's up!", score: `${points} pts`,
+      detail: `${correct}/${answered} correct · best streak ${bestStreak}${!record && prev ? ` · high score ${prev}` : ""}` }, id, startRound);
+  }
+  const onKey = (e) => { const n = Number(e.key); if (tick && n >= 1 && n <= 4) choose(n - 1); };
+  window.addEventListener("keydown", onKey);
+  cleanup = () => { clearInterval(tick); window.removeEventListener("keydown", onKey); };
+  ready();
+};
+
+/* Falling Words */
+VIEWS.falling = async ({ id }) => {
+  const set = await loadSet(id); if (!set) return;
+  let best = (await bestScores(id)).falling?.score || 0;
+  $app.innerHTML = gameHeader(set, "Falling Words");
+  const el = document.getElementById("game");
+  const LIVES = 3;
+  let deck, card, caught, lives, missed, dropStart, frame, paused, revealTimer;
+  function ready() {
+    el.innerHTML = `<div class="panel stack center" style="padding:36px 18px"><div style="font-size:2.6rem">☄️</div><h2 style="font-size:1.5rem">Type the term before it lands</h2>
+      <p class="muted" style="max-width:400px;margin:0 auto">A definition falls from the sky. Type the matching term and press Enter. Small typos are OK. It speeds up as you go, and you have ${LIVES} lives.</p>
+      ${best ? `<p style="color:var(--good);font-weight:700">Your best: ${best} caught</p>` : ""}<button class="btn primary big" id="go" style="justify-self:center">Start</button></div>`;
+    document.getElementById("go").onclick = start; document.getElementById("go").focus();
+  }
+  function start() {
+    deck = shuffle(set.cards); caught = 0; lives = LIVES; missed = []; paused = false;
+    el.innerHTML = `<div class="row" style="justify-content:space-between"><b style="font-size:1.1rem">Caught: <span id="caught" style="color:var(--accent)">0</span></b><span class="lives" id="lives"></span></div>
+      <div class="sky" id="sky"><div class="ground"></div></div>
+      <form class="row" id="ff" style="flex-wrap:nowrap"><input class="input" id="fi" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Type the term…" style="font-size:1.05rem"><button class="btn primary">Enter</button></form>`;
+    drawLives();
+    const input = document.getElementById("fi");
+    document.getElementById("ff").onsubmit = (e) => {
+      e.preventDefault();
+      if (paused || !card || !input.value.trim()) return;
+      if (isCloseEnough(input.value, card.term)) { caught++; document.getElementById("caught").textContent = caught; next(); }
+      else { input.classList.remove("shake"); void input.offsetWidth; input.classList.add("shake"); }
+      input.value = "";
+    };
+    input.focus();
+    next();
+  }
+  function drawLives() { document.getElementById("lives").innerHTML = "❤️".repeat(lives) + `<span class="gone">${"🖤".repeat(LIVES - lives)}</span>`; }
+  function next() {
+    cancelAnimationFrame(frame);
+    if (!deck.length) deck = shuffle(set.cards);
+    card = deck.pop();
+    const sky = document.getElementById("sky");
+    sky.querySelector(".meteor")?.remove(); sky.querySelector(".missed")?.remove();
+    const m = document.createElement("div"); m.className = "meteor"; m.style.left = 5 + Math.random() * 35 + "%";
+    m.innerHTML = `<p>${esc(card.definition)}</p>`; sky.appendChild(m);
+    dropStart = performance.now();
+    const step = (now) => {
+      const progress = (now - dropStart) / 1000 / fallDuration(caught);
+      const maxY = sky.clientHeight - m.offsetHeight - 16;
+      m.style.transform = `translateY(${Math.min(progress, 1) * maxY}px)`;
+      if (progress >= 1) return miss();
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+  }
+  function miss() {
+    paused = true; lives--; missed.push(card); drawLives();
+    const sky = document.getElementById("sky"); sky.querySelector(".meteor")?.remove();
+    const r = document.createElement("div"); r.className = "missed";
+    r.innerHTML = `<div><div class="small" style="color:var(--bad);font-weight:700">Missed! It was</div><div class="t pop">${esc(card.term)}</div></div>`; sky.appendChild(r);
+    revealTimer = setTimeout(() => {
+      paused = false;
+      if (lives <= 0) return finish();
+      next(); document.getElementById("fi")?.focus();
+    }, 1800);
+  }
+  function finish() {
+    cancelAnimationFrame(frame); card = null;
+    saveAttempt(id, "falling", caught, caught + missed.length);
+    const record = caught > best && caught > 0; const prev = best; best = Math.max(best, caught);
+    endScreen(el, { headline: record ? "New high score! 🏆" : "Game over", score: `${caught} caught`, detail: !record && prev ? `Your best: ${prev}` : "",
+      after: missed.length ? `<div class="panel termlist"><div class="termrow"><b>The ones that got away</b><span></span></div>${missed.map((c) => `<div class="termrow"><b style="color:var(--good)">${esc(c.term)}</b><span class="muted">${esc(c.definition)}</span></div>`).join("")}</div>` : "" }, id, start);
+  }
+  cleanup = () => { cancelAnimationFrame(frame); clearTimeout(revealTimer); };
+  ready();
+};
+
+/* Homework */
+VIEWS.hw = async () => {
+  let mode = "tutor", photo = null;
+  const lim = await imageLimits();
+  $app.innerHTML = `
+    <div class="stack"><h1>Homework helper</h1><p class="muted">Type the problem${lim ? " or add a photo of it" : ""}.</p></div>
+    <div class="modepick">
+      <button class="panel tile" data-m="tutor" aria-pressed="true"><span class="ico" aria-hidden="true">🧑‍🏫</span><span><b>Tutor me</b><span class="muted small">Walk me through it one step at a time so I learn it.</span></span></button>
+      <button class="panel tile" data-m="solve" aria-pressed="false"><span class="ico" aria-hidden="true">✅</span><span><b>Steps + answer</b><span class="muted small">Show me the worked steps and the final answer.</span></span></button>
+    </div>
+    <div><label class="lbl" for="prob">The problem</label><textarea class="input" id="prob" rows="5" placeholder="e.g. Solve 3x + 7 = 22, or paste a question from your worksheet"></textarea></div>
+    ${lim ? `<div class="row"><button class="btn" id="addphoto" type="button">📷 Add a photo</button><span class="small muted" id="pname"></span><input type="file" id="photo" accept="${esc(lim.mediaTypes.join(","))}" hidden></div>` : ""}
+    <button class="btn primary big wide" id="start" disabled>Start tutoring →</button>`;
+  const prob = document.getElementById("prob"), startBtn = document.getElementById("start");
+  const refresh = () => { startBtn.disabled = !prob.value.trim() && !photo; startBtn.textContent = mode === "tutor" ? "Start tutoring →" : "Solve it →"; };
+  $app.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { mode = b.dataset.m; $app.querySelectorAll("[data-m]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); refresh(); }));
+  prob.oninput = refresh;
+  if (lim) {
+    const input = document.getElementById("photo");
+    document.getElementById("addphoto").onclick = () => input.click();
+    input.onchange = () => { photo = input.files[0] || null; document.getElementById("pname").textContent = photo ? photo.name : ""; document.getElementById("addphoto").textContent = photo ? "📷 Change photo" : "📷 Add a photo"; refresh(); };
+  }
+  startBtn.onclick = async () => {
+    const text = prob.value.trim();
+    const hw = { mode, problem: text, hasPhoto: !!photo, title: text.slice(0, 90) || "Photo problem", messages: [], createdAt: Date.now() };
+    const id = uid();
+    startBtn.disabled = true;
+    try { await store.put("homework", id, hw); } catch { startBtn.disabled = false; return; }
+    go("hwSession", { id, photo, start: true });
+  };
+};
+
+VIEWS.hwSession = async ({ id, photo, start }) => {
+  const hw = await store.get("homework", id).catch(() => null);
+  if (!hw) { $app.innerHTML = `<div class="panel stack"><p><b>That homework wasn't found.</b></p><button class="btn" data-go="hw" style="justify-self:start">New problem</button></div>`; return; }
+  hw.messages ||= [];
+  let busy = false, ctl = null;
+  const photoUrl = photo ? URL.createObjectURL(photo) : null;
+  $app.innerHTML = `
+    <button class="back" data-go="hw">← New problem</button>
+    <div class="row"><h1 style="font-size:1.5rem">Homework</h1><span class="badge" id="modebadge"></span></div>
+    <div class="panel"><div class="eyebrow" style="color:var(--muted)">Your problem</div>
+      ${hw.problem ? `<p style="white-space:pre-wrap;margin-top:4px">${esc(hw.problem)}</p>` : ""}
+      ${photoUrl ? `<img class="thumb" src="${photoUrl}" alt="Homework photo">` : hw.hasPhoto ? `<p class="muted small" style="margin-top:4px">📷 Photo attached (the first reply transcribes it).</p>` : ""}</div>
+    <div class="stack" id="thread"></div>
+    <form class="composer" id="composer">
+      <div class="row"><input class="input" id="msg" autocomplete="off"><button class="btn primary" id="send">Send</button><button class="btn" id="stop" type="button" hidden>Stop</button></div>
+      <div class="row chips" id="chips"></div>
+    </form>`;
+  const thread = document.getElementById("thread"), msg = document.getElementById("msg");
+  function renderChrome() {
+    document.getElementById("modebadge").textContent = hw.mode === "tutor" ? "Tutor mode" : "Steps + answer";
+    msg.placeholder = hw.mode === "tutor" ? "Type your answer or ask for a hint…" : "Ask a follow-up question…";
+    document.getElementById("chips").innerHTML = hw.mode === "tutor"
+      ? `<button class="btn chip" type="button" data-say="hint">💡 Hint</button><button class="btn chip" type="button" data-say="answer">✅ Just show me the answer</button>` : "";
+    document.getElementById("chips").hidden = hw.mode !== "tutor";
+    for (const b of document.querySelectorAll("#composer button, #msg")) if (b.id !== "stop") b.disabled = busy;
+    document.getElementById("stop").hidden = !busy;
+  }
+  function bubble(m) {
+    const d = document.createElement("div");
+    if (m.role === "user") { d.className = "bubble-me"; d.textContent = m.content; }
+    else { d.className = "panel reply"; d.innerHTML = m.content ? md(m.content) : `<span class="dots" aria-label="Thinking"><i></i><i></i><i></i></span>`; }
+    thread.appendChild(d); return d;
+  }
+  hw.messages.forEach(bubble);
+  renderChrome();
+
+  async function ask(userText, switchTo) {
+    if (busy) return;
+    const sample = await getSample();
+    if (userText) { hw.messages.push({ role: "user", content: userText }); bubble({ role: "user", content: userText }); }
+    if (switchTo) hw.mode = switchTo;
+    const out = bubble({ role: "assistant", content: "" });
+    out.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (!sample) { out.innerHTML = `<p class="notice bad">${esc(aiError({ code: "sampling_disabled" }))}</p>`; return; }
+    busy = true; ctl = new AbortController(); renderChrome();
+    const rules = hw.mode === "solve" ? SOLVE_RULES : TUTOR_RULES;
+    const first = `${rules}\n\nThe student's homework problem:\n${hw.problem || "(see the attached photo)"}${hw.hasPhoto && !photo ? "\n(A photo was attached earlier; use the transcription in your first reply.)" : ""}`;
+    // Keep the conversation within Claude's input size: drop the oldest turns, never the problem.
+    let turns = hw.messages.slice(-24);
+    if (turns[0]?.role === "assistant" && hw.messages.length > 24) turns = turns.slice(1);
+    const input = [{ role: "user", content: first }, ...turns];
+    if (input[input.length - 1].role === "assistant") input.push({ role: "user", content: "Please continue." });
+    try {
+      const { text } = await sample(input, {
+        cache: false, signal: ctl.signal, ...(photo ? { images: [photo] } : {}),
+        onText: ({ text }) => { out.innerHTML = md(text); },
+      });
+      out.innerHTML = md(text);
+      hw.messages.push({ role: "assistant", content: text });
+      await store.put("homework", id, hw).catch((e) => console.warn("homework not saved", e));
+    } catch (e) {
+      const keep = e?.text || "";
+      if (keep) { out.innerHTML = md(keep); hw.messages.push({ role: "assistant", content: keep }); store.put("homework", id, hw).catch(() => {}); }
+      if (e?.code !== "cancelled" || !keep) {
+        const n = document.createElement("p"); n.className = "notice " + (e?.code === "cancelled" ? "warn" : "bad"); n.style.marginTop = keep ? "10px" : "0";
+        n.textContent = aiError(e); if (!keep) out.innerHTML = ""; out.appendChild(n);
+      }
+    } finally {
+      busy = false; ctl = null; renderChrome(); msg.focus();
+    }
+  }
+  document.getElementById("composer").onsubmit = (e) => { e.preventDefault(); const t = msg.value.trim(); if (!t) return; msg.value = ""; ask(t); };
+  document.getElementById("stop").onclick = () => ctl?.abort();
+  document.getElementById("chips").onclick = (e) => {
+    const b = e.target.closest("[data-say]"); if (!b) return;
+    if (b.dataset.say === "hint") ask("Can I get a hint?");
+    else ask("Just show me the full solution and the final answer.", "solve");
+  };
+  cleanup = () => { ctl?.abort(); if (photoUrl) URL.revokeObjectURL(photoUrl); };
+  if (start && !hw.messages.length) ask();
+};
+
+go("home");
+</script>
