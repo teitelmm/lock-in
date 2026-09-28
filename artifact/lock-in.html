@@ -73,6 +73,8 @@ main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; display: grid;
 .tile:disabled { opacity: .5; cursor: not-allowed; }
 .tile .ico { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 1.35rem; }
 .tile b { display: block; font-size: 1.05rem; }
+.tile .muted.small { display: block; }
+.tile .badge { margin-right: auto; }
 .badge { display: inline-block; font-size: .72rem; font-weight: 700; border-radius: 8px; padding: 2px 8px; background: var(--accent-soft); color: var(--accent); }
 .badge.good { background: var(--good-soft); color: var(--good); }
 
@@ -174,6 +176,19 @@ textarea.input { resize: vertical; min-height: 110px; }
 @keyframes pop { 50% { transform: scale(1.15) } }
 .pop { animation: pop .25s ease-out; }
 @media (prefers-reduced-motion: reduce) { .shake, .pop, .spinner { animation: none; } .flip-inner { transition: none; } }
+
+/* Progress */
+.mastery { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--surface-2); gap: 2px; }
+.mastery i { display: block; min-width: 0; }
+.m-mastered { background: var(--good); }
+.m-learning { background: var(--accent); }
+.m-new { background: var(--surface-2); }
+.legend { gap: 16px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.dot.m-new { border: 1px solid var(--border); }
+.weakspots { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: var(--accent-soft); }
+.weakspots .ico { background: var(--surface); }
 
 /* Homework */
 .modepick { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
@@ -282,12 +297,59 @@ function normalizeStudySet(raw) {
 }
 function buildSpeedPool(cards, questions) {
   const items = questions.filter((q) => q.type !== "short" && q.choices.includes(q.answer))
-    .map((q) => ({ prompt: q.prompt, choices: q.type === "mcq" ? shuffle(q.choices) : q.choices, answer: q.answer }));
+    .map((q) => ({ key: questionKey(q), prompt: q.prompt, choices: q.type === "mcq" ? shuffle(q.choices) : q.choices, answer: q.answer }));
   if (cards.length >= 4) for (const c of cards) {
     const others = shuffle(cards.filter((o) => o.term !== c.term)).slice(0, 3).map((o) => o.term);
-    items.push({ prompt: c.definition, choices: shuffle([c.term, ...others]), answer: c.term });
+    items.push({ key: cardKey(c), prompt: c.definition, choices: shuffle([c.term, ...others]), answer: c.term });
   }
   return shuffle(items);
+}
+
+/* ---------- spaced repetition ----------
+   Every card and question has a level 0-5. Right answers move it up a level and push the next
+   review out (days per level below); a wrong answer drops it to 0 so it comes back right away.
+   Answering again before an item is due doesn't move it up, so cramming one game can't fake mastery. */
+const REVIEW_DAYS = [0, 1, 2, 4, 8, 16];
+const DAY_MS = 864e5;
+const MASTERED_LEVEL = 4;
+function hashStr(s) { let h = 5381; for (const ch of s) h = (Math.imul(h, 33) ^ ch.codePointAt(0)) >>> 0; return h.toString(36); }
+function cardKey(c) { return "c:" + normalizeAnswer(c.term); }
+function questionKey(q) { return "q:" + hashStr(clean(q.prompt).toLowerCase()); }
+function schedule(rec, correct, now) {
+  if (correct && rec && rec.due > now) return { ...rec, seen: rec.seen + 1, last: now };
+  const box = correct ? Math.min(REVIEW_DAYS.length - 1, (rec?.box ?? 0) + 1) : 0;
+  return { box, due: now + REVIEW_DAYS[box] * DAY_MS, seen: (rec?.seen ?? 0) + 1, wrong: (rec?.wrong ?? 0) + (correct ? 0 : 1), last: now };
+}
+/** Every studyable item in a set, with its progress record (undefined if never seen). */
+function setItems(set, progress) {
+  const items = progress?.items || {};
+  return [
+    ...set.cards.map((c) => ({ kind: "card", key: cardKey(c), card: c, label: c.term, rec: items[cardKey(c)] })),
+    ...set.questions.map((q) => ({ kind: "question", key: questionKey(q), question: q, label: q.prompt, rec: items[questionKey(q)] })),
+  ];
+}
+function dueItems(set, progress, now) {
+  return setItems(set, progress).filter((it) => it.rec && it.rec.due <= now)
+    .sort((a, b) => a.rec.box - b.rec.box || a.rec.due - b.rec.due);
+}
+function masteryCounts(set, progress) {
+  const n = { fresh: 0, learning: 0, mastered: 0 };
+  for (const it of setItems(set, progress)) n[!it.rec ? "fresh" : it.rec.box >= MASTERED_LEVEL ? "mastered" : "learning"]++;
+  return n;
+}
+function weakSpots(set, progress, limit = 5) {
+  return setItems(set, progress).filter((it) => it.rec?.wrong > 0)
+    .sort((a, b) => b.rec.wrong - a.rec.wrong || a.rec.box - b.rec.box).slice(0, limit);
+}
+function nextDueAt(progressDocs, now) {
+  let next = Infinity;
+  for (const p of progressDocs) for (const r of Object.values(p?.items || {})) if (r.due > now && r.due < next) next = r.due;
+  return next;
+}
+function whenText(t, now) {
+  if (!isFinite(t)) return "";
+  const days = Math.round((new Date(t).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / DAY_MS);
+  return days <= 0 ? "later today" : days === 1 ? "tomorrow" : `in ${days} days`;
 }
 function dayKey(d) { return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
 function studyStreak(times, now = new Date()) {
@@ -517,29 +579,41 @@ VIEWS.home = async () => {
     <section class="stats" id="stats">
       <div class="panel stat"><div class="num">–</div><div class="muted small">Day streak</div></div>
       <div class="panel stat"><div class="num">–</div><div class="muted small">Sessions this week</div></div>
-      <div class="panel stat"><div class="num">–</div><div class="muted small">Study sets</div></div>
+      <div class="panel stat"><div class="num">–</div><div class="muted small">Due for review</div></div>
     </section>
     <section class="grid2">
+      <button class="panel tile weakspots" id="weak" hidden><span class="ico" aria-hidden="true">🎯</span><span><b>Study my weak spots</b><span class="muted small" id="weaktxt"></span></span></button>
       <button class="panel tile" data-go="new"><span class="ico" aria-hidden="true">📤</span><span><b>New study set</b><span class="muted small">Upload slides or notes, get a quiz</span></span></button>
       <button class="panel tile" data-go="hw"><span class="ico" aria-hidden="true">🧑‍🏫</span><span><b>Homework helper</b><span class="muted small">Tutor mode or steps + answer</span></span></button>
     </section>
     <section class="stack"><h2>Your study sets</h2><div id="sets" class="grid2"><p class="muted">Loading your study sets…</p></div></section>
     <section class="stack" id="hwsec" hidden><h2>Recent homework</h2><div id="hwlist" class="stack" style="gap:8px"></div></section>
     <p class="muted small" id="where"></p>`;
-  const [sets, attempts, hw] = await Promise.all([store.list("sets"), store.list("attempts"), store.list("homework")]);
+  const [sets, attempts, hw, progressDocs] = await Promise.all([store.list("sets"), store.list("attempts"), store.list("homework"), store.list("progress")]);
   if (state.view !== "home") return;
+  const now = Date.now();
+  const progressById = new Map(progressDocs.map((p) => [p.id, p]));
+  const dueBySet = new Map(sets.map((s) => [s.id, dueItems({ cards: s.cards || [], questions: s.questions || [] }, progressById.get(s.id), now).length]));
+  const dueTotal = [...dueBySet.values()].reduce((a, b) => a + b, 0);
+  const setsDue = [...dueBySet.values()].filter(Boolean).length;
   sets.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const times = attempts.map((a) => a.at);
   const week = attempts.filter((a) => a.at > Date.now() - 7 * 864e5).length;
   document.getElementById("stats").innerHTML = `
     <div class="panel stat"><div class="num">${studyStreak(times)} 🔥</div><div class="muted small">Day streak</div></div>
     <div class="panel stat"><div class="num">${week}</div><div class="muted small">Sessions this week</div></div>
-    <div class="panel stat"><div class="num">${sets.length}</div><div class="muted small">Study sets</div></div>`;
+    <div class="panel stat"><div class="num">${dueTotal}</div><div class="muted small">Due for review</div></div>`;
+  if (dueTotal) {
+    const weak = document.getElementById("weak");
+    weak.hidden = false; weak.dataset.go = "review"; weak.dataset.id = "all";
+    document.getElementById("weaktxt").textContent = `${Math.min(dueTotal, REVIEW_LIMIT)} items you're shaky on, from ${setsDue} ${setsDue === 1 ? "set" : "sets"}`;
+  }
   document.getElementById("sets").innerHTML = sets.length
     ? sets.map((s) => `<button class="panel tile" data-go="set" data-id="${esc(s.id)}" style="display:block">
         <div class="eyebrow">${esc(s.subject || "Study set")}</div>
         <b style="margin-top:4px">${esc(s.title)}</b>
-        <div class="muted small" style="margin-top:6px">${(s.cards || []).length} cards · ${(s.questions || []).length} questions</div></button>`).join("")
+        <div class="muted small" style="margin-top:6px">${(s.cards || []).length} cards · ${(s.questions || []).length} questions</div>
+        ${dueBySet.get(s.id) ? `<span class="badge" style="margin-top:8px">${dueBySet.get(s.id)} due</span>` : ""}</button>`).join("")
     : `<div class="panel stack" style="grid-column:1/-1"><p><b>No study sets yet.</b></p><p class="muted">Upload a slide deck, PDF or your notes and Lock In turns them into flashcards, a quiz and games.</p><button class="btn primary" data-go="new" style="justify-self:start">Make your first study set</button></div>`;
   hw.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   if (hw.length) {
@@ -629,10 +703,45 @@ function saveAttempt(setId, mode, score, total) {
   store.put("attempts", uid(), { setId, mode, score, total, at: Date.now() }).catch((e) => console.warn("attempt not saved", e));
 }
 
+async function loadProgress(setId) {
+  const p = await store.get("progress", setId).catch(() => null);
+  return { items: p?.items || {} };
+}
+// One write at a time per set's progress document.
+const progressChains = new Map();
+const openRecorders = new Set();
+/** Collects right/wrong answers during a game and saves them in one write per flush. */
+function progressRecorder(setId) {
+  const pending = [];
+  const rec = {
+    add(key, correct) { pending.push([key, correct, Date.now()]); },
+    flush() {
+      if (!pending.length) return progressChains.get(setId) || Promise.resolve();
+      const batch = pending.splice(0);
+      const chain = (progressChains.get(setId) || Promise.resolve()).then(async () => {
+        const doc = await loadProgress(setId);
+        for (const [key, correct, at] of batch) doc.items[key] = schedule(doc.items[key], correct, at);
+        await store.put("progress", setId, doc);
+      }).catch((e) => console.warn("progress not saved", e));
+      progressChains.set(setId, chain);
+      return chain;
+    },
+    close() { openRecorders.delete(rec); return rec.flush(); },
+  };
+  openRecorders.add(rec);
+  return rec;
+}
+window.addEventListener("pagehide", () => openRecorders.forEach((r) => r.flush()));
+
 VIEWS.set = async ({ id, fresh }) => {
   $app.innerHTML = `<p class="muted">Loading…</p>`;
   const set = await loadSet(id); if (!set) return;
-  const best = await bestScores(id);
+  const [best, progress] = await Promise.all([bestScores(id), loadProgress(id)]);
+  const now = Date.now();
+  const due = dueItems(set, progress, now), m = masteryCounts(set, progress), weak = weakSpots(set, progress);
+  const total = m.fresh + m.learning + m.mastered || 1;
+  const seenAny = m.learning + m.mastered > 0;
+  const next = whenText(nextDueAt([progress], now), now);
   const modes = [
     ["quiz", "📝", "Quiz", "Answer every question with instant feedback.", set.questions.length > 0],
     ["flashcards", "🃏", "Flashcards", "Flip, then sort: know it or still learning.", set.cards.length > 0],
@@ -646,17 +755,28 @@ VIEWS.set = async ({ id, fresh }) => {
     ${fresh === "cut" || set.truncated ? `<p class="notice warn">That material was very long, so only the first part was used. Upload the rest as a second set.</p>` : ""}
     <div class="stack" style="gap:4px"><div class="eyebrow">${esc(set.subject || "Study set")}</div><h1>${esc(set.title)}</h1>
       <p class="muted">${set.cards.length} flashcards · ${set.questions.length} quiz questions</p></div>
+    <section class="panel stack" aria-label="Your progress">
+      <div class="row" style="justify-content:space-between"><h2>Your progress</h2><span class="small muted">${Math.round((m.mastered / total) * 100)}% mastered</span></div>
+      <div class="mastery" role="img" aria-label="${m.mastered} mastered, ${m.learning} learning, ${m.fresh} not studied yet">
+        <i class="m-mastered" style="flex:${m.mastered}"></i><i class="m-learning" style="flex:${m.learning}"></i><i class="m-new" style="flex:${m.fresh}"></i></div>
+      <div class="row small legend"><span><b class="dot m-mastered"></b>Mastered ${m.mastered}</span><span><b class="dot m-learning"></b>Learning ${m.learning}</span><span><b class="dot m-new"></b>Not studied yet ${m.fresh}</span></div>
+      ${due.length
+        ? `<button class="btn primary big wide" id="review">Review ${due.length} due ${due.length === 1 ? "item" : "items"} →</button>`
+        : `<p class="muted small">${seenAny ? `Nothing due right now 🎉${next ? ` Your next review is ${next}.` : ""}` : "Play any mode below. Lock In tracks what you miss and brings it back here for review."}</p>`}
+    </section>
+    ${weak.length ? `<section class="stack"><h2>Your weak spots</h2><div class="panel termlist">${weak.map((w) => `<div class="termrow"><span>${esc(w.kind === "card" ? w.card.term : w.question.prompt)}${w.kind === "card" ? `<span class="muted small" style="display:block">${esc(w.card.definition)}</span>` : ""}</span><span class="small" style="color:var(--bad);text-align:right">Missed ${w.rec.wrong}×${w.rec.box >= 2 ? ` <span class="badge good">improving</span>` : ""}</span></div>`).join("")}</div></section>` : ""}
     <section class="grid2">${modes.map(([m, ico, name, body, ok]) => `
       <button class="panel tile" data-mode="${m}" ${ok ? "" : "disabled"}><span class="ico" aria-hidden="true">${ico}</span>
         <span><b>${name}</b><span class="muted small">${ok ? body : "Not enough material in this set for this mode."}</span>${bestLabel(m)}</span></button>`).join("")}</section>
     ${set.cards.length ? `<section class="stack"><h2>Terms in this set</h2><div class="panel termlist">${set.cards.map((c) => `<div class="termrow"><b>${esc(c.term)}</b><span class="muted">${esc(c.definition)}</span></div>`).join("")}</div></section>` : ""}
     <button class="dangerlink" id="del">Delete this set</button>`;
   $app.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => go(b.dataset.mode, { id })));
+  document.getElementById("review")?.addEventListener("click", () => go("review", { id }));
   const del = document.getElementById("del");
   del.onclick = async () => {
     if (!del.classList.contains("armed")) { del.classList.add("armed"); del.textContent = "Tap again to delete for good"; return; }
     del.disabled = true; del.textContent = "Deleting…";
-    try { await store.remove("sets", id); go("home"); } catch { del.textContent = "Couldn't delete. Try again."; del.disabled = false; }
+    try { await store.remove("sets", id); await store.remove("progress", id).catch(() => {}); go("home"); } catch { del.textContent = "Couldn't delete. Try again."; del.disabled = false; }
   };
 };
 
@@ -675,68 +795,143 @@ function endScreen(el, { headline, score, detail = "", replay = "Play again", ex
 }
 const cheer = (p) => p >= 0.9 ? "You're locked in 🔒" : p >= 0.7 ? "Nice work 💪" : p >= 0.5 ? "Getting there 📈" : "Keep practicing, you've got this 🌱";
 
-/* Quiz */
-VIEWS.quiz = async ({ id }) => {
-  const set = await loadSet(id); if (!set) return;
-  $app.innerHTML = gameHeader(set, "Quiz");
-  const el = document.getElementById("game");
-  const prep = (qs) => shuffle(qs).map((q) => (q.type === "mcq" ? { ...q, choices: shuffle(q.choices) } : q));
-  let deck, idx, results, retry;
-  const start = (qs, isRetry) => { deck = prep(qs); idx = 0; results = []; retry = isRetry; show(); };
+/* Shared question runner (Quiz and Review). Each item: {type, prompt, choices, answer, explanation}.
+   onResult(item, ok) fires when the student moves on, so "I was right" is already applied. */
+function runQuestions(el, items, { onResult, onDone, label = "Question" }) {
+  let idx = 0; const results = [];
   function show() {
-    if (idx >= deck.length) return finish();
-    const q = deck[idx];
-    el.innerHTML = `<div class="row small muted"><span>Question ${idx + 1} of ${deck.length}</span><div class="progress"><i style="width:${(idx / deck.length) * 100}%"></i></div></div>
-      <div class="panel"><p class="qprompt">${esc(q.prompt)}</p>
+    if (idx >= items.length) return onDone(results);
+    const q = items[idx];
+    el.innerHTML = `<div class="row small muted"><span>${label} ${idx + 1} of ${items.length}</span><div class="progress"><i style="width:${(idx / items.length) * 100}%"></i></div></div>
+      <div class="panel">${q.eyebrow ? `<div class="eyebrow" style="margin-bottom:6px">${esc(q.eyebrow)}</div>` : ""}<p class="qprompt">${esc(q.prompt)}</p>
       ${q.type === "short"
-        ? `<form class="row" id="sf" style="margin-top:16px;flex-wrap:nowrap"><input class="input" id="sa" autocomplete="off" placeholder="Type your answer"><button class="btn primary">Check</button></form>`
+        ? `<form class="row" id="sf" style="margin-top:16px;flex-wrap:nowrap"><input class="input" id="sa" autocomplete="off" placeholder="${esc(q.placeholder || "Type your answer")}"><button class="btn primary">Check</button></form>
+           ${q.canSkip ? `<button class="linkbtn small" id="idk" style="margin-top:8px">I don't know, show me</button>` : ""}`
         : `<div class="choices">${q.choices.map((c, i) => `<button class="choice" data-c="${i}"><span class="key">${q.type === "true_false" ? c[0] : "ABCD"[i] || i + 1}</span><span>${esc(c)}</span></button>`).join("")}</div>`}
       <div id="fb"></div></div><div id="next"></div>`;
     if (q.type === "short") {
       const input = document.getElementById("sa"); input.focus();
       document.getElementById("sf").onsubmit = (e) => { e.preventDefault(); if (input.value.trim()) answer(input.value); };
+      document.getElementById("idk")?.addEventListener("click", () => answer(""));
     } else el.querySelectorAll(".choice").forEach((b) => (b.onclick = () => answer(q.choices[Number(b.dataset.c)])));
   }
   function answer(value) {
-    const q = deck[idx];
+    const q = items[idx];
     const ok = q.type === "short" ? isCloseEnough(value, q.answer) : value === q.answer;
-    results.push({ q, given: value, ok });
+    const result = { q, given: value, ok };
+    results.push(result);
     el.querySelectorAll(".choice").forEach((b) => {
       const c = q.choices[Number(b.dataset.c)]; b.disabled = true;
       b.classList.add(c === q.answer ? "right" : c === value ? "wrong" : "dim");
     });
     const form = document.getElementById("sf");
     if (form) { form.querySelector("input").disabled = true; form.querySelector("button").hidden = true; }
-    const fb = document.getElementById("fb");
-    fb.innerHTML = `<div class="feedback ${ok ? "right" : "wrong"}"><div class="head">${ok ? "Correct! 🎉" : "Not quite. Answer: " + esc(q.answer)}</div>
+    document.getElementById("idk")?.remove();
+    document.getElementById("fb").innerHTML = `<div class="feedback ${ok ? "right" : "wrong"}"><div class="head">${ok ? "Correct! 🎉" : "Not quite. Answer: " + esc(q.answer)}</div>
       ${q.explanation ? `<p class="small" style="margin-top:4px">${esc(q.explanation)}</p>` : ""}
-      ${!ok && q.type === "short" ? `<button class="linkbtn small" id="override" style="margin-top:6px">I was right (count it)</button>` : ""}</div>`;
-    document.getElementById("override")?.addEventListener("click", (e) => { results[results.length - 1].ok = true; e.target.replaceWith(Object.assign(document.createElement("span"), { className: "small", textContent: "Counted as correct." })); });
-    document.getElementById("next").innerHTML = `<button class="btn primary big wide" id="nx">${idx + 1 < deck.length ? "Next question →" : "See my score"}</button>`;
-    const nx = document.getElementById("nx"); nx.focus(); nx.onclick = () => { idx++; show(); };
+      ${!ok && q.type === "short" && value ? `<button class="linkbtn small" id="override" style="margin-top:6px">I was right (count it)</button>` : ""}</div>`;
+    document.getElementById("override")?.addEventListener("click", (e) => { result.ok = true; e.target.replaceWith(Object.assign(document.createElement("span"), { className: "small", textContent: "Counted as correct." })); });
+    document.getElementById("next").innerHTML = `<button class="btn primary big wide" id="nx">${idx + 1 < items.length ? "Next →" : "See my score"}</button>`;
+    const nx = document.getElementById("nx"); nx.focus();
+    nx.onclick = () => { onResult?.(q, result.ok); idx++; show(); };
   }
-  function finish() {
-    const right = results.filter((r) => r.ok).length, missed = results.filter((r) => !r.ok);
-    if (!retry) saveAttempt(id, "quiz", right, deck.length);
-    endScreen(el, {
-      headline: cheer(right / deck.length), score: `${right}/${deck.length}`,
-      detail: retry ? "Retry round (not counted toward your best)" : `${Math.round((right / deck.length) * 100)}% correct`,
-      replay: "Take it again", extra: missed.length ? `Retry the ${missed.length} I missed` : "",
-      after: missed.length ? `<div class="panel stack"><h2>Review what you missed</h2>${missed.map((m) => `<div class="stack" style="gap:2px;border-top:1px solid var(--border);padding-top:10px">
-        <b>${esc(m.q.prompt)}</b><span class="small" style="color:var(--bad)">You said: ${esc(m.given || "(blank)")}</span>
-        <span class="small" style="color:var(--good)">Answer: ${esc(m.q.answer)}</span>${m.q.explanation ? `<span class="small muted">${esc(m.q.explanation)}</span>` : ""}</div>`).join("")}</div>` : "",
-    }, id, () => start(set.questions, false), () => start(missed.map((m) => m.q), true));
+  show();
+}
+function missedList(missed) {
+  return missed.length ? `<div class="panel stack"><h2>Review what you missed</h2>${missed.map((m) => `<div class="stack" style="gap:2px;border-top:1px solid var(--border);padding-top:10px">
+    <b>${esc(m.q.prompt)}</b><span class="small" style="color:var(--bad)">You said: ${esc(m.given || "(skipped)")}</span>
+    <span class="small" style="color:var(--good)">Answer: ${esc(m.q.answer)}</span>${m.q.explanation ? `<span class="small muted">${esc(m.q.explanation)}</span>` : ""}</div>`).join("")}</div>` : "";
+}
+
+/* Quiz */
+VIEWS.quiz = async ({ id }) => {
+  const set = await loadSet(id); if (!set) return;
+  $app.innerHTML = gameHeader(set, "Quiz");
+  const el = document.getElementById("game");
+  const rec = progressRecorder(id);
+  cleanup = () => rec.close();
+  const prep = (qs) => shuffle(qs).map((q) => (q.type === "mcq" ? { ...q, choices: shuffle(q.choices) } : q));
+  function start(qs, retry) {
+    const deck = prep(qs);
+    runQuestions(el, deck, {
+      onResult: (q, ok) => rec.add(questionKey(q), ok),
+      onDone: (results) => {
+        rec.flush();
+        const right = results.filter((r) => r.ok).length, missed = results.filter((r) => !r.ok);
+        if (!retry) saveAttempt(id, "quiz", right, deck.length);
+        endScreen(el, {
+          headline: cheer(right / deck.length), score: `${right}/${deck.length}`,
+          detail: retry ? "Retry round (not counted toward your best)" : `${Math.round((right / deck.length) * 100)}% correct`,
+          replay: "Take it again", extra: missed.length ? `Retry the ${missed.length} I missed` : "", after: missedList(missed),
+        }, id, () => start(set.questions, false), () => start(missed.map((m) => m.q), true));
+      },
+    });
   }
   start(set.questions, false);
+};
+
+/* Review: due items from one set, or from every set ("Study my weak spots"). */
+const REVIEW_LIMIT = 20;
+VIEWS.review = async ({ id }) => {
+  const all = id === "all";
+  $app.innerHTML = `<p class="muted">Loading…</p>`;
+  let sets;
+  if (all) sets = (await store.list("sets")).map((s) => ({ ...s, cards: s.cards || [], questions: s.questions || [] }));
+  else { const one = await loadSet(id); if (!one) return; sets = [one]; }
+  const progress = new Map(await Promise.all(sets.map(async (s) => [s.id, await loadProgress(s.id)])));
+  const now = Date.now();
+  const due = sets.flatMap((s) => dueItems(s, progress.get(s.id), now).map((it) => ({ ...it, set: s })))
+    .sort((a, b) => a.rec.box - b.rec.box || a.rec.due - b.rec.due).slice(0, REVIEW_LIMIT);
+  const back = all ? `<button class="back" data-go="home">← Home</button>` : `<button class="back" data-go="set" data-id="${esc(id)}">← ${esc(sets[0].title)}</button>`;
+  $app.innerHTML = `${back}<h1>${all ? "Your weak spots" : "Review"}</h1><div id="game" class="stack"></div>`;
+  const el = document.getElementById("game");
+  if (!due.length) {
+    const next = whenText(nextDueAt([...progress.values()], now), now);
+    el.innerHTML = `<div class="panel stack center" style="padding:34px 18px"><div style="font-size:2.4rem">🎉</div><h2>Nothing to review right now</h2>
+      <p class="muted">${next ? `Your next review is ${next}.` : "Play a game on any set first. Lock In brings back what you miss."}</p></div>`;
+    return;
+  }
+  const recs = new Map(sets.map((s) => [s.id, progressRecorder(s.id)]));
+  cleanup = () => recs.forEach((r) => r.close());
+  const items = shuffle(due.slice(0, 6)).concat(shuffle(due.slice(6))).map((it) => {
+    const base = it.kind === "card"
+      ? { type: "short", prompt: it.card.definition, answer: it.card.term, explanation: "", placeholder: "Type the term", canSkip: true }
+      : { ...it.question, choices: it.question.type === "mcq" ? shuffle(it.question.choices) : it.question.choices, canSkip: it.question.type === "short" };
+    return { ...base, key: it.key, setId: it.set.id, box: it.rec.box, eyebrow: all ? it.set.title : "" };
+  });
+  runQuestions(el, items, {
+    label: "Item",
+    onResult: (q, ok) => recs.get(q.setId).add(q.key, ok),
+    onDone: async (results) => {
+      el.innerHTML = `<p class="muted">Saving your progress…</p>`;
+      await Promise.all([...recs.values()].map((r) => r.flush()));
+      const right = results.filter((r) => r.ok).length, missed = results.filter((r) => !r.ok);
+      saveAttempt(all ? "all" : id, "review", right, results.length);
+      const after = await Promise.all(sets.map((s) => loadProgress(s.id)));
+      const next = whenText(nextDueAt(after, Date.now()), Date.now());
+      endScreen(el, {
+        headline: cheer(right / results.length), score: `${right}/${results.length}`,
+        detail: `${right} moved up a level${missed.length ? ` · ${missed.length} will come back soon` : ""}${next ? ` · next review ${next}` : ""}`,
+        replay: missed.length ? "Review again" : "Check for more",
+        after: missedList(missed),
+      }, all ? sets[0]?.id : id, () => go("review", { id }));
+      if (all) { const b = el.querySelector('[data-go="set"]'); b.dataset.go = "home"; delete b.dataset.id; b.textContent = "Home"; }
+    },
+  });
 };
 
 /* Flashcards */
 VIEWS.flashcards = async ({ id }) => {
   const set = await loadSet(id); if (!set) return;
+  const progress = await loadProgress(id);
   $app.innerHTML = gameHeader(set, "Flashcards");
   const el = document.getElementById("game");
+  const rec = progressRecorder(id);
   let deck, idx, known, learning, round, flipped, termFirst = true;
-  const start = (cards, r) => { deck = shuffle(cards); idx = 0; known = []; learning = []; round = r; flipped = false; show(); };
+  // Due and missed cards first, then new ones, then cards you already know.
+  const rank = (c) => { const r = progress.items[cardKey(c)]; return !r ? 1 : r.due <= Date.now() ? 0 : 2; };
+  const order = (cards) => shuffle(cards).sort((a, b) => rank(a) - rank(b));
+  const start = (cards, r) => { deck = order(cards); idx = 0; known = []; learning = []; round = r; flipped = false; show(); };
   function show() {
     if (idx >= deck.length) return finish();
     const c = deck[idx], front = termFirst ? c.term : c.definition, back = termFirst ? c.definition : c.term;
@@ -755,8 +950,8 @@ VIEWS.flashcards = async ({ id }) => {
   }
   function mark(ok) {
     if (idx >= deck.length) return;
-    (ok ? known : learning).push(deck[idx]); idx++; flipped = false;
-    if (idx >= deck.length && round === 1) saveAttempt(id, "flashcards", known.length, deck.length);
+    (ok ? known : learning).push(deck[idx]); rec.add(cardKey(deck[idx]), ok); idx++; flipped = false;
+    if (idx >= deck.length) { rec.flush(); if (round === 1) saveAttempt(id, "flashcards", known.length, deck.length); }
     show();
   }
   function finish() {
@@ -773,7 +968,7 @@ VIEWS.flashcards = async ({ id }) => {
     else if (e.key === "ArrowLeft") mark(false);
   };
   window.addEventListener("keydown", onKey);
-  cleanup = () => window.removeEventListener("keydown", onKey);
+  cleanup = () => { window.removeEventListener("keydown", onKey); rec.close(); };
   start(set.cards, 1);
 };
 
@@ -783,6 +978,7 @@ VIEWS.speed = async ({ id }) => {
   let best = (await bestScores(id)).speed?.score || 0;
   $app.innerHTML = gameHeader(set, "Speed Round");
   const el = document.getElementById("game");
+  const rec = progressRecorder(id);
   const ROUND = 60;
   let pool, idx, points, streak, bestStreak, answered, correct, endsAt, locked, tick;
   function ready() {
@@ -817,6 +1013,7 @@ VIEWS.speed = async ({ id }) => {
     const it = pool[idx % pool.length]; if (i >= it.choices.length) return;
     locked = true; answered++;
     const ok = it.choices[i] === it.answer;
+    rec.add(it.key, ok);
     document.querySelectorAll("#q .choice").forEach((b, j) => b.classList.add(it.choices[j] === it.answer ? "right" : j === i ? "wrong" : "dim"));
     if (ok) { streak++; bestStreak = Math.max(bestStreak, streak); correct++; points += 100 * streakMultiplier(streak); }
     else { streak = 0; document.getElementById("q").classList.add("shake"); }
@@ -832,6 +1029,7 @@ VIEWS.speed = async ({ id }) => {
   }
   function finish() {
     clearInterval(tick); tick = null;
+    rec.flush();
     saveAttempt(id, "speed", points, answered);
     const record = points > best && points > 0; const prev = best; best = Math.max(best, points);
     endScreen(el, { headline: record ? "New high score! 🏆" : "Time's up!", score: `${points} pts`,
@@ -839,7 +1037,7 @@ VIEWS.speed = async ({ id }) => {
   }
   const onKey = (e) => { const n = Number(e.key); if (tick && n >= 1 && n <= 4) choose(n - 1); };
   window.addEventListener("keydown", onKey);
-  cleanup = () => { clearInterval(tick); window.removeEventListener("keydown", onKey); };
+  cleanup = () => { clearInterval(tick); window.removeEventListener("keydown", onKey); rec.close(); };
   ready();
 };
 
@@ -849,6 +1047,7 @@ VIEWS.falling = async ({ id }) => {
   let best = (await bestScores(id)).falling?.score || 0;
   $app.innerHTML = gameHeader(set, "Falling Words");
   const el = document.getElementById("game");
+  const rec = progressRecorder(id);
   const LIVES = 3;
   let deck, card, caught, lives, missed, dropStart, frame, paused, revealTimer;
   function ready() {
@@ -867,7 +1066,7 @@ VIEWS.falling = async ({ id }) => {
     document.getElementById("ff").onsubmit = (e) => {
       e.preventDefault();
       if (paused || !card || !input.value.trim()) return;
-      if (isCloseEnough(input.value, card.term)) { caught++; document.getElementById("caught").textContent = caught; next(); }
+      if (isCloseEnough(input.value, card.term)) { rec.add(cardKey(card), true); caught++; document.getElementById("caught").textContent = caught; next(); }
       else { input.classList.remove("shake"); void input.offsetWidth; input.classList.add("shake"); }
       input.value = "";
     };
@@ -894,7 +1093,7 @@ VIEWS.falling = async ({ id }) => {
     frame = requestAnimationFrame(step);
   }
   function miss() {
-    paused = true; lives--; missed.push(card); drawLives();
+    paused = true; lives--; missed.push(card); rec.add(cardKey(card), false); drawLives();
     const sky = document.getElementById("sky"); sky.querySelector(".meteor")?.remove();
     const r = document.createElement("div"); r.className = "missed";
     r.innerHTML = `<div><div class="small" style="color:var(--bad);font-weight:700">Missed! It was</div><div class="t pop">${esc(card.term)}</div></div>`; sky.appendChild(r);
@@ -906,12 +1105,13 @@ VIEWS.falling = async ({ id }) => {
   }
   function finish() {
     cancelAnimationFrame(frame); card = null;
+    rec.flush();
     saveAttempt(id, "falling", caught, caught + missed.length);
     const record = caught > best && caught > 0; const prev = best; best = Math.max(best, caught);
     endScreen(el, { headline: record ? "New high score! 🏆" : "Game over", score: `${caught} caught`, detail: !record && prev ? `Your best: ${prev}` : "",
       after: missed.length ? `<div class="panel termlist"><div class="termrow"><b>The ones that got away</b><span></span></div>${missed.map((c) => `<div class="termrow"><b style="color:var(--good)">${esc(c.term)}</b><span class="muted">${esc(c.definition)}</span></div>`).join("")}</div>` : "" }, id, start);
   }
-  cleanup = () => { cancelAnimationFrame(frame); clearTimeout(revealTimer); };
+  cleanup = () => { cancelAnimationFrame(frame); clearTimeout(revealTimer); rec.close(); };
   ready();
 };
 
